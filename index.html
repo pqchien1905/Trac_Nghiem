@@ -488,6 +488,10 @@
                     <button id="import-quiz-btn" type="button">Import quiz (.json)</button>
                     <span style="color:#6c757d; font-size:13px;">(Bạn có thể export file .json và commit lên Git)</span>
                 </div>
+                <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+                    <input id="remote-quiz-url" type="text" placeholder="Paste raw .json URL (GitHub raw)" style="flex:1; padding:6px" />
+                    <button id="load-remote-btn" type="button">Load remote</button>
+                </div>
             </div>
         </div>
         
@@ -1405,6 +1409,29 @@
                     }
                 };
                 reader.readAsText(f);
+            });
+        }
+
+        // Load remote quiz via URL (raw GitHub URL etc.)
+        const remoteUrlInput = document.getElementById('remote-quiz-url');
+        const loadRemoteBtn = document.getElementById('load-remote-btn');
+        if (loadRemoteBtn && remoteUrlInput) {
+            loadRemoteBtn.addEventListener('click', async () => {
+                const url = (remoteUrlInput.value || '').trim();
+                if (!url) { alert('Vui lòng nhập URL'); return; }
+                try {
+                    const res = await fetch(url, { cache: 'no-store' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const payload = await res.json();
+                    const name = payload.name || url.split('/').pop() || ('remote_quiz_' + Date.now());
+                    const key = SAVED_PREFIX + Date.now();
+                    const toSave = { name: name, created: Date.now(), questions: payload.questions || payload };
+                    localStorage.setItem(key, JSON.stringify(toSave));
+                    loadSavedQuizzes();
+                    alert('Load thành công và đã lưu vào danh sách.');
+                } catch (err) {
+                    alert('Không thể tải quiz từ URL: ' + err.message + '. Lưu ý: URL phải trả về JSON và cho phép CORS.');
+                }
             });
         }
 
