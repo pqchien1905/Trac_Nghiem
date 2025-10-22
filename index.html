@@ -488,10 +488,6 @@
                     <button id="import-quiz-btn" type="button">Import quiz (.json)</button>
                     <span style="color:#6c757d; font-size:13px;">(Bạn có thể export file .json và commit lên Git)</span>
                 </div>
-                <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-                    <input id="remote-quiz-url" type="text" placeholder="Paste raw .json URL (GitHub raw)" style="flex:1; padding:6px" />
-                    <button id="load-remote-btn" type="button">Load remote</button>
-                </div>
             </div>
         </div>
         
@@ -709,7 +705,8 @@
 
             // Lưu quiz đã parse vào localStorage để dùng lại sau này
             try {
-                const saveName = `${new Date().toISOString().slice(0,19).replace('T',' ')} - ${fileInput.files[0] ? fileInput.files[0].name : 'quiz'}`;
+                // Use the original filename as the saved name (no timestamp)
+                const saveName = (fileInput && fileInput.files && fileInput.files[0]) ? fileInput.files[0].name : 'quiz';
                 saveQuizToStorage(saveName, originalQuestions);
                 loadSavedQuizzes();
             } catch (e) {
@@ -1310,7 +1307,12 @@
                     row.style.padding = '6px 0';
 
                     const left = document.createElement('div');
-                    left.textContent = `${item.name} (${item.questions.length} câu)`;
+                    // Strip common timestamp patterns from name for display (e.g., '2025-10-22 18:31:56 - filename' or ISO prefix)
+                    let displayName = item.name || '';
+                    // remove leading ISO date or 'YYYY-MM-DD HH:MM:SS - '
+                    displayName = displayName.replace(/^\d{4}-\d{2}-\d{2}[T ]?\d{2}:\d{2}:\d{2}\s*-?\s*/,'');
+                    displayName = displayName.replace(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s*-?\s*/,'');
+                    left.textContent = `${displayName} (${item.questions.length} câu)`;
 
                     const actions = document.createElement('div');
                     actions.style.display = 'flex';
@@ -1380,60 +1382,6 @@
 
         // Load saved list on startup
         try { loadSavedQuizzes(); } catch (e) { /* ignore */ }
-
-        // Import/export wiring
-        const importInput = document.getElementById('import-quiz-input');
-        const importBtn = document.getElementById('import-quiz-btn');
-        if (importBtn && importInput) {
-            importBtn.addEventListener('click', () => importInput.click());
-            importInput.addEventListener('change', (e) => {
-                const f = e.target.files[0];
-                if (!f) return;
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    try {
-                        const payload = JSON.parse(evt.target.result);
-                        // If payload contains questions array, save it
-                        const name = payload.name || f.name.replace(/\.json$/i,'');
-                        const key = SAVED_PREFIX + Date.now();
-                        const toSave = {
-                            name: name,
-                            created: Date.now(),
-                            questions: payload.questions || payload
-                        };
-                        localStorage.setItem(key, JSON.stringify(toSave));
-                        loadSavedQuizzes();
-                        alert('Import thành công.');
-                    } catch (err) {
-                        alert('Không thể import file: ' + err.message);
-                    }
-                };
-                reader.readAsText(f);
-            });
-        }
-
-        // Load remote quiz via URL (raw GitHub URL etc.)
-        const remoteUrlInput = document.getElementById('remote-quiz-url');
-        const loadRemoteBtn = document.getElementById('load-remote-btn');
-        if (loadRemoteBtn && remoteUrlInput) {
-            loadRemoteBtn.addEventListener('click', async () => {
-                const url = (remoteUrlInput.value || '').trim();
-                if (!url) { alert('Vui lòng nhập URL'); return; }
-                try {
-                    const res = await fetch(url, { cache: 'no-store' });
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    const payload = await res.json();
-                    const name = payload.name || url.split('/').pop() || ('remote_quiz_' + Date.now());
-                    const key = SAVED_PREFIX + Date.now();
-                    const toSave = { name: name, created: Date.now(), questions: payload.questions || payload };
-                    localStorage.setItem(key, JSON.stringify(toSave));
-                    loadSavedQuizzes();
-                    alert('Load thành công và đã lưu vào danh sách.');
-                } catch (err) {
-                    alert('Không thể tải quiz từ URL: ' + err.message + '. Lưu ý: URL phải trả về JSON và cho phép CORS.');
-                }
-            });
-        }
 
         // Gán sự kiện cho các nút
     prevButton.addEventListener('click', prevQuestion);
