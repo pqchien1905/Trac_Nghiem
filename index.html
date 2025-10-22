@@ -1032,9 +1032,34 @@
             progressBar.style.width = '0%';
             progressPercentElement.textContent = '';
 
-            // Lưu mảng trả lời rỗng cho tất cả câu
+            // Lưu mảng trả lời rỗng cho tất cả câu và đảm bảo bắt đầu từ câu 1
             userAnswers = new Array(prepared.length).fill(null);
+            // đảm bảo index bắt đầu từ 0 (Câu 1)
+            currentQuestionIndex = 0;
             renderTestForm();
+
+            // Đảm bảo trên thiết bị di động/cuộn chậm: chờ một chút để DOM render xong rồi cuộn/focus
+            setTimeout(() => {
+                if (testSection) {
+                    try {
+                        // Ưu tiên scrollIntoView
+                        testSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } catch (e) {
+                        // fallback
+                        const y = testSection.getBoundingClientRect().top + window.scrollY - 10;
+                        window.scrollTo({ top: y, behavior: 'smooth' });
+                    }
+
+                    // focus vào radio đầu tiên nếu có, để trình duyệt không tự chuyển focus vào phần khác
+                    const firstRadio = testForm.querySelector('input[type=radio]');
+                    if (firstRadio) {
+                        try { firstRadio.focus(); } catch (e) { /* ignore */ }
+                    } else {
+                        // nếu không có radio (ít khả năng), focus vào nút Nộp để tránh focus lên phần cuối
+                        try { submitTestBtn && submitTestBtn.focus(); } catch (e) {}
+                    }
+                }
+            }, 120);
         }
 
         // Xử lý nộp bài ở chế độ Kiểm tra
