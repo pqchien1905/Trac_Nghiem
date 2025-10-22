@@ -483,6 +483,11 @@
             <div class="format-guide" id="saved-files-section" style="margin-top:18px;">
                 <h4>File đã lưu</h4>
                 <div id="saved-list"></div>
+                <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+                    <input type="file" id="import-quiz-input" accept="application/json" style="display:none" />
+                    <button id="import-quiz-btn" type="button">Import quiz (.json)</button>
+                    <span style="color:#6c757d; font-size:13px;">(Bạn có thể export file .json và commit lên Git)</span>
+                </div>
             </div>
         </div>
         
@@ -1312,6 +1317,21 @@
                     openBtn.textContent = 'Mở';
                     openBtn.addEventListener('click', () => openSavedQuiz(k));
 
+                    const exportBtn = document.createElement('button');
+                    exportBtn.type = 'button';
+                    exportBtn.textContent = 'Export';
+                    exportBtn.style.background = '#2ecc71';
+                    exportBtn.style.color = '#fff';
+                    exportBtn.addEventListener('click', () => {
+                        try {
+                            const blob = new Blob([JSON.stringify(item, null, 2)], { type: 'application/json' });
+                            const name = (item.name || 'quiz').replace(/[^a-z0-9\-_. ]/gi, '_') + '.json';
+                            saveAs(blob, name);
+                        } catch (e) {
+                            console.error('Export failed', e);
+                        }
+                    });
+
                     const delBtn = document.createElement('button');
                     delBtn.type = 'button';
                     delBtn.textContent = 'Xóa';
@@ -1325,6 +1345,7 @@
                     });
 
                     actions.appendChild(openBtn);
+                    actions.appendChild(exportBtn);
                     actions.appendChild(delBtn);
                     row.appendChild(left);
                     row.appendChild(actions);
@@ -1355,6 +1376,37 @@
 
         // Load saved list on startup
         try { loadSavedQuizzes(); } catch (e) { /* ignore */ }
+
+        // Import/export wiring
+        const importInput = document.getElementById('import-quiz-input');
+        const importBtn = document.getElementById('import-quiz-btn');
+        if (importBtn && importInput) {
+            importBtn.addEventListener('click', () => importInput.click());
+            importInput.addEventListener('change', (e) => {
+                const f = e.target.files[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    try {
+                        const payload = JSON.parse(evt.target.result);
+                        // If payload contains questions array, save it
+                        const name = payload.name || f.name.replace(/\.json$/i,'');
+                        const key = SAVED_PREFIX + Date.now();
+                        const toSave = {
+                            name: name,
+                            created: Date.now(),
+                            questions: payload.questions || payload
+                        };
+                        localStorage.setItem(key, JSON.stringify(toSave));
+                        loadSavedQuizzes();
+                        alert('Import thành công.');
+                    } catch (err) {
+                        alert('Không thể import file: ' + err.message);
+                    }
+                };
+                reader.readAsText(f);
+            });
+        }
 
         // Gán sự kiện cho các nút
     prevButton.addEventListener('click', prevQuestion);
