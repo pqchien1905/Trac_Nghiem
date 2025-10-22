@@ -1032,16 +1032,9 @@
             progressBar.style.width = '0%';
             progressPercentElement.textContent = '';
 
-            // Lưu mảng trả lời rỗng cho tất cả câu và đảm bảo bắt đầu từ câu 1
+            // Lưu mảng trả lời rỗng cho tất cả câu
             userAnswers = new Array(prepared.length).fill(null);
-            currentQuestionIndex = 0; // reset index so test starts at question 1
             renderTestForm();
-            // Scroll test section into view and focus first input so it starts at question 1
-            setTimeout(() => {
-                testSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                const firstRadio = testForm.querySelector('input[type=radio]');
-                if (firstRadio) firstRadio.focus();
-            }, 50);
         }
 
         // Xử lý nộp bài ở chế độ Kiểm tra
