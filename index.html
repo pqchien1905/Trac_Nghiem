@@ -479,6 +479,11 @@
                     <li><strong>Ví dụ:</strong> "A. Đáp án A (Đ)"</li>
                 </ul>
             </div>
+            <!-- Danh sách file đã lưu (localStorage) -->
+            <div class="format-guide" id="saved-files-section" style="margin-top:18px;">
+                <h4>File đã lưu</h4>
+                <div id="saved-list"></div>
+            </div>
         </div>
         
         <!-- Preview sau khi tải file: hiện tất cả câu hỏi và đáp án đúng -->
@@ -692,6 +697,15 @@
             
             // Hiển thị preview + chọn chế độ với thứ tự gốc (không đảo)
             showPreview(originalQuestions);
+
+            // Lưu quiz đã parse vào localStorage để dùng lại sau này
+            try {
+                const saveName = `${new Date().toISOString().slice(0,19).replace('T',' ')} - ${fileInput.files[0] ? fileInput.files[0].name : 'quiz'}`;
+                saveQuizToStorage(saveName, originalQuestions);
+                loadSavedQuizzes();
+            } catch (e) {
+                console.warn('Không thể lưu quiz vào localStorage', e);
+            }
         }
 
         // Chuẩn hóa từng dòng text (loại bỏ NBSP, gộp khoảng trắng, thay – — thành -)
@@ -1255,6 +1269,92 @@
             const blob = new Blob([resultText], { type: 'text/plain;charset=utf-8' });
             saveAs(blob, 'ket_qua_trac_nghiem.txt');
         }
+
+        // ========== LocalStorage: Lưu/Load các quiz đã parse ==========
+        const SAVED_PREFIX = 'tracnghiem_quiz_';
+
+        function saveQuizToStorage(name, questions) {
+            const key = SAVED_PREFIX + Date.now();
+            const payload = {
+                name: name,
+                created: Date.now(),
+                questions: questions
+            };
+            localStorage.setItem(key, JSON.stringify(payload));
+        }
+
+        function loadSavedQuizzes() {
+            const savedListEl = document.getElementById('saved-list');
+            savedListEl.innerHTML = '';
+            const keys = Object.keys(localStorage).filter(k => k.startsWith(SAVED_PREFIX)).sort().reverse();
+            if (keys.length === 0) {
+                savedListEl.textContent = 'Không có file nào được lưu.';
+                return;
+            }
+            keys.forEach(k => {
+                try {
+                    const item = JSON.parse(localStorage.getItem(k));
+                    const row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.justifyContent = 'space-between';
+                    row.style.alignItems = 'center';
+                    row.style.padding = '6px 0';
+
+                    const left = document.createElement('div');
+                    left.textContent = `${item.name} (${item.questions.length} câu)`;
+
+                    const actions = document.createElement('div');
+                    actions.style.display = 'flex';
+                    actions.style.gap = '8px';
+
+                    const openBtn = document.createElement('button');
+                    openBtn.type = 'button';
+                    openBtn.textContent = 'Mở';
+                    openBtn.addEventListener('click', () => openSavedQuiz(k));
+
+                    const delBtn = document.createElement('button');
+                    delBtn.type = 'button';
+                    delBtn.textContent = 'Xóa';
+                    delBtn.style.background = '#e74c3c';
+                    delBtn.style.color = '#fff';
+                    delBtn.addEventListener('click', () => {
+                        if (confirm('Xóa file đã lưu này?')) {
+                            deleteSavedQuiz(k);
+                            loadSavedQuizzes();
+                        }
+                    });
+
+                    actions.appendChild(openBtn);
+                    actions.appendChild(delBtn);
+                    row.appendChild(left);
+                    row.appendChild(actions);
+                    savedListEl.appendChild(row);
+                } catch (e) {
+                    console.warn('Invalid saved quiz', k, e);
+                }
+            });
+        }
+
+        function openSavedQuiz(key) {
+            try {
+                const item = JSON.parse(localStorage.getItem(key));
+                if (!item || !item.questions) return;
+                // Set originalQuestions to saved one and show preview
+                originalQuestions = item.questions;
+                fileInfo.textContent = `Đã mở: ${item.name}`;
+                fileInfo.style.color = 'green';
+                showPreview(originalQuestions);
+            } catch (e) {
+                console.error('Không thể mở quiz đã lưu', e);
+            }
+        }
+
+        function deleteSavedQuiz(key) {
+            localStorage.removeItem(key);
+        }
+
+        // Load saved list on startup
+        try { loadSavedQuizzes(); } catch (e) { /* ignore */ }
 
         // Gán sự kiện cho các nút
     prevButton.addEventListener('click', prevQuestion);
