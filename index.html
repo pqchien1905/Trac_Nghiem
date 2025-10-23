@@ -1098,6 +1098,23 @@
             // Ẩn form, hiện kết quả
             testSection.classList.add('hidden');
             showResults();
+
+            // Phát âm thanh theo kết quả bài kiểm tra (<50%, >50%, 100%)
+            try {
+                const total = shuffledQuestions.length || 0;
+                if (total > 0) {
+                    if (typeof correctAnswersCount === 'number' && correctAnswersCount === total) {
+                        const a = document.getElementById('audio-perfect');
+                        if (a) { a.currentTime = 0; a.play(); }
+                    } else if (typeof correctAnswersCount === 'number' && (correctAnswersCount / total) > 0.5) {
+                        const a = document.getElementById('audio-correct');
+                        if (a) { a.currentTime = 0; a.play(); }
+                    } else {
+                        const a = document.getElementById('audio-wrong');
+                        if (a) { a.currentTime = 0; a.play(); }
+                    }
+                }
+            } catch (e) { /* ignore */ }
         }
 
         function goToPreview() {
@@ -1412,5 +1429,7 @@
     if (backPreviewBtn) backPreviewBtn.addEventListener('click', goToPreview);
     if (backUploadBtn) backUploadBtn.addEventListener('click', goToUpload);
     </script>
+    <!-- Âm thanh khi đạt 100% điểm (dán Base64 vào thuộc tính src dưới dạng data:audio/...) -->
+    <audio id="audio-perfect" src="" preload="auto"></audio>
 </body>
 </html>
